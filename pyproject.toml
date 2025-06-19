@@ -1,0 +1,22 @@
+[project]
+name = "geo_photo_toolkit"
+version = "1.0.0"
+description = "A toolkit for extracting GPS data from photos and generating KMZ files."
+dependencies = [
+    "pandas",
+    "Pillow",
+    "fuzzywuzzy",
+    "tlsh",
+    "openpyxl",
+    "requests",
+    "simplekml",
+    "pydantic",
+    "pydantic-settings",
+    "typer[all]",
+    "tomli",
+]
+
+[tool.ruff]
+line-length = 88
+# Enable the isort rules.
+extend-select = ["I"]

@@ -1,0 +1,41 @@
+# =============================================================
+#           GLOBAL CONFIGURATION FOR GEO PHOTO TOOLKIT
+#  This file defines your personal, default settings for all projects.
+# =============================================================
+
+# This section defines the default EXIF data to extract.
+# The format is: <your_column_name> = "<Official_EXIF_Tag_Name>"
+[extract.columns]
+camera_make = "Make"
+camera_model = "Model"
+aperture = "FNumber"
+iso = "ISOSpeedRatings"
+shutter_speed = "ExposureTime"
+altitude = "GPSAltitude"
+lat = "GPSLatitude"
+lon = "GPSLongitude"
+datetime_original = "DateTimeOriginal"
+
+
+# This section defines the default format for the KMZ description pop-up.
+# You can use any column name defined above as a {placeholder}.
+[kmz.description]
+template = """
+    <h3>{name}</h3>
+    <table border="0" cellpadding="5">
+        <tr>
+            <td><strong>Date Taken:</strong></td>
+            <td>{datetime_original}</td>
+        </tr>
+        <tr>
+            <td><strong>Camera:</strong></td>
+            <td>{camera_make} {camera_model}</td>
+        </tr>
+        <tr>
+            <td><strong>Altitude:</strong></td>
+            <td>{altitude:.1f} meters</td>
+        </tr>
+    </table>
+    <hr>
+    <a href="{maps_url}">View on Google Maps</a>
+"""
