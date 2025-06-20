@@ -141,6 +141,7 @@ python main.py kmz-generate --help
 For complete control over the data extraction and map generation, the toolkit uses a `config.toml` file. You can have a `global_config.toml` in the main folder for your default settings, and use the `--config` flag to point to a smaller, project-specific `.toml` file to override those defaults.
 
 **Example `config.toml`:**
+
 ```toml
 [extract.columns]
 camera_model = "Model"
@@ -153,8 +154,9 @@ template = """
     <b>Model:</b> {camera_model}<br>
     <b>Altitude:</b> {altitude:.1f}m
 """
+```
 
-### Dependencies and Acknowledgements
+## Dependencies and Acknowledgements
 
 This toolkit is made possible by the incredible work of developers in the open-source community. This toolkit is made possible by the incredible work of developers in the open-source community. We gratefully acknowledge the pivotal role of the following libraries:
 
