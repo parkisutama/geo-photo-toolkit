@@ -54,7 +54,7 @@ This project uses `uv` for fast and efficient project and environment management
 1. **Clone the Repository**
 
     ```bash
-    git clone [https://github.com/your-username/geo-photo-toolkit.git](https://github.com/your-username/geo-photo-toolkit.git)
+    git clone https://github.com/parkisutama/geo-photo-toolkit
     cd geo-photo-toolkit
     ```
 
@@ -70,19 +70,19 @@ This project uses `uv` for fast and efficient project and environment management
 
     ```bash
     uv venv
-    source .venv/bin/activate
-    # On Windows, use: .venv\Scripts\activate
+    .venv\Scripts\activate
+    # On macOS/Linux source .venv/bin/activate
     ```
 
 3. **Install Dependencies**
 
 Install the project and all its dependencies in editable mode.
 
+> be careful of `.` after -e
+
 ```bash
     uv pip install -e .
 ```
-
-> be careful of `.` after -e
 
 ## End-to-End Workflow (Example Scenario)
 
