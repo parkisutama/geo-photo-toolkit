@@ -98,6 +98,8 @@ This toolkit is designed to make the journey from photos to map as simple as pos
 
 Run the `gps-extract` command using the `--include-full-path` flag. This is the key to automating the process. It tells the tool to include a column with the full path to each image in the output file.
 
+> Change the .csv to .xlsx if you prefer an Excel file.
+
 ```bash
 python main.py gps-extract --input-dir "C:\Users\You\Documents\field_photos" --output-file "site_data.csv" --include-full-path
 ```
@@ -111,7 +113,7 @@ python main.py gps-extract --input-dir "C:\Users\You\Documents\field_photos" --o
 | IMG_001.jpg | Timestamp... | IMG_001.jpg | C:\Users\You\Documents\field_photos\IMG_001.jpg |
 | IMG_002.jpg | Timestamp... | IMG_002.jpg | C:\Users\You\Documents\field_photos\IMG_002.jpg |
 
-> Change the .csv to .xlsx if you prefer an Excel file.
+
 
 ### Step 2: Generate the KMZ File Directly
 
@@ -160,17 +162,17 @@ template = """
 
 This toolkit is made possible by the incredible work of developers in the open-source community. This toolkit is made possible by the incredible work of developers in the open-source community. We gratefully acknowledge the pivotal role of the following libraries:
 
-- Typer: For making the creation of clean, powerful, and user-friendly command-line interfaces remarkably simple and enjoyable. Its design is a pleasure to work with.
-Pydantic: For providing robust data validation and settings management through Python type hints. It brings confidence and clarity to the application's configuration.
+- [Typer](https://github.com/fastapi/typer): For making the creation of clean, powerful, and user-friendly command-line interfaces remarkably simple and enjoyable. Its design is a pleasure to work with.
 
-- Pandas: The cornerstone of data manipulation in Python. Its powerful DataFrame object is indispensable for reading, organizing, and writing the tabular data that drives this toolkit.
+- [Pydantic](https://github.com/pydantic/pydantic): For providing robust data validation and settings management through Python type hints. It brings confidence and clarity to the application's configuration.
 
-- Pillow (PIL Fork): The essential library for opening, manipulating, and saving many different image file formats. The ability to access EXIF metadata is a core function of this toolkit, and Pillow makes it possible.
-- simplekml: For providing an elegant and Pythonic way to generate KML files. It abstracts away the complexities of the KML standard, allowing us to focus on the data.
+- [Pandas](https://github.com/pandas-dev/pandas): The cornerstone of data manipulation in Python. Its powerful DataFrame object is indispensable for reading, organizing, and writing the tabular data that drives this toolkit.
+
+- [Pillow (PIL Fork)](https://github.com/python-pillow/Pillow): The essential library for opening, manipulating, and saving many different image file formats. The ability to access EXIF metadata is a core function of this toolkit, and Pillow makes it possible.
+
+- [simplekml](https://github.com/eisoldt/simplekml): For providing an elegant and Pythonic way to generate KML files. It abstracts away the complexities of the KML standard, allowing us to focus on the data.
 Requests: For making HTTP requests humane. It powers the file downloader with a simple and reliable API.
 
-- Openpyxl: The go-to library for reading and writing Excel 2010+ files, enabling the .xlsx output feature.
-
-- fuzzywuzzy & tlsh: These libraries are included in the analysis module to provide powerful capabilities for identifying duplicate and similar images by filename or by content.
+- [Openpyxl](https://github.com/soxhub/openpyxl): The go-to library for reading and writing Excel 2010+ files, enabling the .xlsx output feature.
 
 A sincere thank you to the maintainers and contributors of these projects. Your dedication enables the creation of powerful and practical tools like this one.
