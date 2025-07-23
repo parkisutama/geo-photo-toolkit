@@ -1,29 +1,33 @@
-# src/main.py
+# main.py
 from typing import Optional
 
 import typer
 from typing_extensions import Annotated
 
-from src.utils.logging import setup_logger
+from src.config import OCREngine
+from src.utils.logging import setup_logging
 from src.workflows.gps_extraction import run_gps_extraction_workflow
 from src.workflows.kmz_generation import run_kmz_generation_workflow
 
+# --- Setup Typer App and Logging ---
 app = typer.Typer(
-    name="Geo Photo Toolkit",
-    help="A CLI for processing geotagged photos and creating map files.",
-    add_completion=False,
+    help="Geo Photo Toolkit: A tool for extracting, processing, and visualizing geospatial photo data."
 )
 
 
-# --- Common callback to setup logging for all commands ---
 @app.callback()
 def main(
     ctx: typer.Context,
-    log_dir: Annotated[
-        str, typer.Option(help="Directory to store the log file.")
-    ] = "logs",
+    verbose: bool = typer.Option(
+        False, "--verbose", "-v", help="Enable verbose (DEBUG level) logging."
+    ),
 ):
-    ctx.obj = setup_logger(log_dir)
+    """
+    Main callback to set up shared resources like the logger.
+    """
+    log_level = "DEBUG" if verbose else "INFO"
+    logger = setup_logging(log_level)
+    ctx.obj = logger
 
 
 # --- GPS Extraction Command ---
@@ -32,29 +36,76 @@ def gps_extract_command(
     ctx: typer.Context,
     input_dir: Annotated[
         str,
-        typer.Option("--input-dir", "-i", help="Directory containing the image files."),
+        typer.Option("--input-dir", "-i", help="Input directory containing photos."),
     ],
     output_file: Annotated[
         str,
-        typer.Option(
-            "--output-file", "-o", help="Path for the output file (.csv or .xlsx)."
-        ),
+        typer.Option("--output-file", "-o", help="Output file path (.csv or .xlsx)."),
     ],
-    config_path: Annotated[
-        Optional[str],
-        typer.Option("--config", "-c", help="Path to a TOML config file."),
-    ] = None,
-    include_full_path: Annotated[
+    # --- NEW OPTION ---
+    ocr_disabled: Annotated[
         bool,
         typer.Option(
-            "--include-full-path", help="Include the full, absolute path to each image."
+            "--ocr-disabled",
+            help="Run in EXIF-only mode, completely disabling the OCR fallback.",
+            is_flag=True,
         ),
     ] = False,
+    # --- END OF NEW OPTION ---
+    ocr_engine: Annotated[
+        OCREngine,
+        typer.Option(
+            "--ocr-engine",
+            help="The primary OCR engine to use (if OCR is not disabled).",
+            case_sensitive=False,
+        ),
+    ] = OCREngine.EASYOCR,
+    gcv_fallback: Annotated[
+        bool,
+        typer.Option(
+            "--gcv-fallback",
+            help="If using EasyOCR, fallback to Google Vision if it fails.",
+            is_flag=True,
+        ),
+    ] = False,
+    gcv_limit: Annotated[
+        int,
+        typer.Option(
+            "--gcv-limit",
+            help="Limit the number of images sent to Google Vision API to control costs.",
+        ),
+    ] = -1,
+    no_ocr_on_invalid_gps: Annotated[
+        bool,
+        typer.Option(
+            "--no-ocr-on-invalid-gps",
+            help="Disable OCR fallback if EXIF GPS data is present but invalid/corrupt.",
+            is_flag=True,
+        ),
+    ] = False,
+    include_full_path: Annotated[
+        bool, typer.Option(help="Include the full photo path in the output.")
+    ] = True,
+    config_path: Annotated[
+        Optional[str], typer.Option(help="Path to a custom config.toml file.")
+    ] = None,
 ):
-    """Extracts EXIF metadata from images based on a configuration file."""
+    """
+    Extracts EXIF metadata from images, with powerful, configurable OCR fallback.
+    """
     logger = ctx.obj
     logger.info("Invoking GPS Extraction command.")
-    run_gps_extraction_workflow(input_dir, output_file, include_full_path, config_path)
+    run_gps_extraction_workflow(
+        input_dir=input_dir,
+        output_file=output_file,
+        include_full_path=include_full_path,
+        config_path=config_path,
+        ocr_disabled=ocr_disabled,
+        ocr_engine=ocr_engine,
+        gcv_fallback=gcv_fallback,
+        gcv_limit=gcv_limit,
+        no_ocr_on_invalid_gps=no_ocr_on_invalid_gps,
+    )
 
 
 # --- KMZ Generation Command ---
@@ -62,24 +113,24 @@ def gps_extract_command(
 def kmz_generate_command(
     ctx: typer.Context,
     input_file: Annotated[
-        str, typer.Option("--input-file", "-f", help="Input data file (.csv or .xlsx).")
+        str,
+        typer.Option(
+            "--input-file", "-i", help="Input CSV or Excel file with GPS data."
+        ),
     ],
-    output_dir: Annotated[
-        str, typer.Option("--output-dir", "-d", help="Directory to save the KMZ file.")
+    output_file: Annotated[
+        str, typer.Option("--output-file", "-o", help="Output KMZ file path.")
     ],
     config_path: Annotated[
-        Optional[str],
-        typer.Option(
-            "--config",
-            "-c",
-            help="Path to a TOML config file for description formatting.",
-        ),
+        Optional[str], typer.Option(help="Path to a custom config.toml file.")
     ] = None,
 ):
     """Generates a KMZ file from a CSV or Excel file."""
     logger = ctx.obj
     logger.info("Invoking KMZ Generation command.")
-    run_kmz_generation_workflow(input_file, output_dir, config_path)
+    run_kmz_generation_workflow(
+        input_file=input_file, output_file=output_file, config_path=config_path
+    )
 
 
 if __name__ == "__main__":

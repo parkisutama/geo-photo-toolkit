@@ -1,4 +1,6 @@
 # src/config.py
+from enum import Enum
+
 from pydantic_settings import BaseSettings
 
 
@@ -20,3 +22,14 @@ class AppConfig(BaseSettings):
 
 # Instantiate the config for easy import across the app
 settings = AppConfig()
+
+
+class OCREngine(str, Enum):
+    """Enumeration for the available OCR engines."""
+
+    EASYOCR = "easyocr"
+    GOOGLE = "google"
+
+
+# A list of the available choices for help text in the CLI.
+OCR_ENGINE_CHOICES = [e.value for e in OCREngine]
