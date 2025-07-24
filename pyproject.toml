@@ -1,6 +1,6 @@
 [project]
 name = "geo_photo_toolkit"
-version = "1.0.0"
+version = "1.4.0" # Bumping version for this intelligent feature
 description = "A toolkit for extracting GPS data from photos and generating KMZ files."
 dependencies = [
     "pandas",
@@ -14,6 +14,11 @@ dependencies = [
     "pydantic-settings",
     "typer[all]",
     "tomli",
+    "opencv-python-headless",
+    "regex",
+    "easyocr",
+    "google-cloud-vision",
+    "scipy", # Add scipy for statistical analysis (finding the mode)
 ]
 
 [tool.ruff]
