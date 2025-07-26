@@ -15,20 +15,29 @@ logger = logging.getLogger("GeoPhotoToolkitLogger")
 
 
 def run_gps_extraction_workflow(
-    input_dir: str,
-    output_file: str,
-    include_full_path: bool,
-    config_path: str | None,
-    ocr_disabled: bool,  # Accept the new flag
-    ocr_engine: OCREngine,
-    gcv_fallback: bool,
-    gcv_limit: int,
-    no_ocr_on_invalid_gps: bool,
-) -> None:
+    input_dir,
+    output_file,
+    include_full_path=True,
+    config_path=None,
+    ocr_disabled=False,
+    ocr_engine=None,
+    gcv_fallback=False,
+    gcv_limit=-1,
+    no_ocr_on_invalid_gps=False,
+    preprocess_method="auto",
+    save_preprocessed=False,
+):
     """
     Main workflow to extract GPS data, with tiered OCR and configurable logic.
     """
     logger.info("--- Starting GPS Extraction Workflow ---")
+    debug_folder = None
+    if save_preprocessed:
+        debug_folder = os.path.join(input_dir, "_preprocessed_debug")
+    # Example loop for preprocessing each image before OCR
+    # for image_path in image_list:
+    #     preprocessed_path = preprocess_image(image_path, method=preprocess_method, debug_folder=debug_folder)
+    #     # Use preprocessed_path for OCR
     if ocr_disabled:
         logger.info("Mode: EXIF-only. OCR fallback is completely disabled.")
     else:
@@ -95,7 +104,11 @@ def run_gps_extraction_workflow(
                 if use_gcv_primary:
                     if gcv_limit == -1 or gcv_processed_count < gcv_limit:
                         ocr_result = extract_gps_with_ocr(
-                            full_path, OCREngine.GOOGLE, gcv_key_path
+                            full_path,
+                            OCREngine.GOOGLE,
+                            gcv_key_path,
+                            preprocess_method=preprocess_method,
+                            debug_folder=debug_folder,
                         )
                         gcv_processed_count += 1
                         source_engine = "Google Vision"
@@ -105,10 +118,15 @@ def run_gps_extraction_workflow(
                         )
                 else:
                     ocr_result = extract_gps_with_ocr(
-                        full_path, OCREngine.EASYOCR, None
+                        full_path,
+                        OCREngine.EASYOCR,
+                        None,
+                        preprocess_method=preprocess_method,
+                        debug_folder=debug_folder,
                     )
                     source_engine = "EasyOCR"
 
+                # Google Vision fallback if EasyOCR fails and fallback is enabled
                 if (
                     ocr_result is None
                     and ocr_engine == OCREngine.EASYOCR
@@ -119,7 +137,11 @@ def run_gps_extraction_workflow(
                             f"EasyOCR failed for {filename}. Trying Google Vision fallback..."
                         )
                         ocr_result = extract_gps_with_ocr(
-                            full_path, OCREngine.GOOGLE, gcv_key_path
+                            full_path,
+                            OCREngine.GOOGLE,
+                            gcv_key_path,
+                            preprocess_method=preprocess_method,
+                            debug_folder=debug_folder,
                         )
                         gcv_processed_count += 1
                         source_engine = "Google Vision (Fallback)"
