@@ -4,7 +4,6 @@ import os
 from typing import List, Optional, Tuple
 
 import easyocr
-import regex
 from google.cloud import vision
 
 from src.config import OCREngine  # --- THE FIX IS HERE ---
@@ -30,65 +29,119 @@ def _parse_gps_from_text(text: str) -> Optional[Tuple[float, float]]:
     Parses a single block of text to find and extract GPS coordinates.
     Supports DMS, DDM, and DD formats.
     """
-    cleaned_text = text.replace(",", ".").replace("\n", " ")
-    cleaned_text = regex.sub(r"(\D)(\d{2})(\d{1})(\.)", r"\1\2 \3\4", cleaned_text)
-    dms_pattern = regex.compile(
-        r"(?P<lat_deg>\d{1,3})\D+?(?P<lat_min>\d{1,2})\D+?(?P<lat_sec>[\d.]+)\D*?(?P<lat_hem>[NS])\D+?(?P<lon_deg>\d{1,3})\D+?(?P<lon_min>\d{1,2})\D+?(?P<lon_sec>[\d.]+)\D*?(?P<lon_hem>[EW])",
-        regex.VERBOSE | regex.IGNORECASE,
-    )
-    ddm_pattern = regex.compile(
-        r"(?P<lat_deg>\d{1,3})\D+?(?P<lat_dm>[\d.]+)\D*?(?P<lat_hem>[NS])\D+?(?P<lon_deg>\d{1,3})\D+?(?P<lon_dm>[\d.]+)\D*?(?P<lon_hem>[EW])",
-        regex.VERBOSE | regex.IGNORECASE,
-    )
-    dd_pattern = regex.compile(r"(-?\d{1,3}\.\d{4,})\s*,\s*(-?\d{1,3}\.\d{4,})")
+    import re
 
-    match = dms_pattern.search(cleaned_text)
+    # Normalize and clean text
+    cleaned = (
+        text.replace("\n", " ")
+        .replace("*", "°")
+        .replace("/", "'")
+        .replace(",", ".")
+        .replace("  ", " ")
+    )
+    cleaned = re.sub(r'[^\dNSEW°\'".\- ]+', " ", cleaned)
+    cleaned = re.sub(r"\s+", " ", cleaned)
+
+    # Stricter regex for DMS/DM/Decimal formats (avoid matching huge numbers)
+    coord_regex = re.compile(
+        r'(\d{1,2})[°\s]?(\d{1,2})[\s\'"]?(\d{1,2}(?:\.\d+)?)?["\s]?([NS])'
+        r'.*?(\d{1,3})[°\s]?(\d{1,2})[\s\'"]?(\d{1,2}(?:\.\d+)?)?["\s]?([EW])',
+        re.IGNORECASE,
+    )
+
+    # Stricter regex for DDM format
+    ddm_regex = re.compile(
+        r'(\d{1,2})[°\s]?([\d.]+)[\s\'"]?([NS])'
+        r'.*?(\d{1,3})[°\s]?([\d.]+)[\s\'"]?([EW])',
+        re.IGNORECASE,
+    )
+
+    # Try DMS first
+    match = coord_regex.search(cleaned)
     if match:
         try:
-            lat_val = _convert_dms_to_dd(
-                match.group("lat_deg"),
-                match.group("lat_min"),
-                match.group("lat_sec"),
-                match.group("lat_hem").upper(),
+            lat_deg = float(match.group(1))
+            lat_min = float(match.group(2) or 0)
+            lat_sec = float(match.group(3) or 0)
+            lat_hem = match.group(4).upper()
+            lon_deg = float(match.group(5))
+            lon_min = float(match.group(6) or 0)
+            lon_sec = float(match.group(7) or 0)
+            lon_hem = match.group(8).upper()
+            # Convert to decimal degrees
+            lat_dd = lat_deg + lat_min / 60 + lat_sec / 3600
+            lon_dd = lon_deg + lon_min / 60 + lon_sec / 3600
+            if lat_hem == "S":
+                lat_dd = -lat_dd
+            if lon_hem == "W":
+                lon_dd = -lon_dd
+            # Validate ranges
+            if not (-90 <= lat_dd <= 90 and -180 <= lon_dd <= 180):
+                logger.warning(
+                    f"GPS Parsing DMS out of range: lat={lat_dd}, lon={lon_dd} | Raw text: '{text}'"
+                )
+                return None
+            logger.info(
+                f"GPS Parsing: Raw text: '{text}' | Format: DMS | Parsed: lat={lat_dd}, lon={lon_dd} | Converted DD: ({lat_dd}, {lon_dd})"
             )
-            lon_val = _convert_dms_to_dd(
-                match.group("lon_deg"),
-                match.group("lon_min"),
-                match.group("lon_sec"),
-                match.group("lon_hem").upper(),
-            )
-            if -90 <= lat_val <= 90 and -180 <= lon_val <= 180:
-                return lat_val, lon_val
-        except (ValueError, TypeError):
-            pass
+            return (lat_dd, lon_dd)
+        except Exception as e:
+            logger.warning(f"GPS Parsing DMS failed: {e} | Raw text: '{text}'")
+            return None
 
-    match = ddm_pattern.search(cleaned_text)
+    # Try DDM format
+    match = ddm_regex.search(cleaned)
     if match:
         try:
-            lat_val = _convert_ddm_to_dd(
-                match.group("lat_deg"),
-                match.group("lat_dm"),
-                match.group("lat_hem").upper(),
+            lat_deg = float(match.group(1))
+            lat_min = float(match.group(2) or 0)
+            lat_hem = match.group(3).upper()
+            lon_deg = float(match.group(4))
+            lon_min = float(match.group(5) or 0)
+            lon_hem = match.group(6).upper()
+            # Convert to decimal degrees
+            lat_dd = lat_deg + lat_min / 60
+            lon_dd = lon_deg + lon_min / 60
+            if lat_hem == "S":
+                lat_dd = -lat_dd
+            if lon_hem == "W":
+                lon_dd = -lon_dd
+            # Validate ranges
+            if not (-90 <= lat_dd <= 90 and -180 <= lon_dd <= 180):
+                logger.warning(
+                    f"GPS Parsing DDM out of range: lat={lat_dd}, lon={lon_dd} | Raw text: '{text}'"
+                )
+                return None
+            logger.info(
+                f"GPS Parsing: Raw text: '{text}' | Format: DDM | Parsed: lat={lat_dd}, lon={lon_dd} | Converted DD: ({lat_dd}, {lon_dd})"
             )
-            lon_val = _convert_ddm_to_dd(
-                match.group("lon_deg"),
-                match.group("lon_dm"),
-                match.group("lon_hem").upper(),
-            )
-            if -90 <= lat_val <= 90 and -180 <= lon_val <= 180:
-                return lat_val, lon_val
-        except (ValueError, TypeError):
-            pass
+            return (lat_dd, lon_dd)
+        except Exception as e:
+            logger.warning(f"GPS Parsing DDM failed: {e} | Raw text: '{text}'")
+            return None
 
-    match = dd_pattern.search(cleaned_text)
+    # Fallback: try to find decimal degrees (DD) format
+    dd_pattern = re.compile(
+        r"(-?\d{1,2}\.\d{4,})\s*[NS]?[, ]\s*(-?\d{1,3}\.\d{4,})\s*[EW]?"
+    )
+    match = dd_pattern.search(cleaned)
     if match:
         try:
             lat = float(match.group(1))
             lon = float(match.group(2))
-            if -90 <= lat <= 90 and -180 <= lon <= 180:
-                return lat, lon
-        except (ValueError, TypeError):
-            pass
+            # Validate ranges
+            if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+                logger.warning(
+                    f"GPS Parsing DD out of range: lat={lat}, lon={lon} | Raw text: '{text}'"
+                )
+                return None
+            logger.info(
+                f"GPS Parsing: Raw text: '{text}' | Format: DD | Parsed: lat={lat}, lon={lon} | Converted DD: ({lat}, {lon})"
+            )
+            return (lat, lon)
+        except Exception as e:
+            logger.warning(f"GPS Parsing DD failed: {e} | Raw text: '{text}'")
+            return None
     return None
 
 
@@ -148,29 +201,43 @@ def _extract_text_with_google_vision(
 
 
 def extract_gps_with_ocr(
-    image_path: str, engine: OCREngine, gcv_key_path: Optional[str]
+    image_path: str,
+    engine: OCREngine,
+    gcv_key_path: Optional[str],
+    preprocess_method: str = "auto",
+    debug_folder: str = None,
 ) -> Optional[Tuple[float, float, str]]:
     """
     Main dispatcher function. Extracts GPS using the specified OCR engine.
     """
+    from src.core.preprocess import preprocess_image
+
+    # Preprocess image before OCR
+    preprocessed_path = preprocess_image(
+        image_path, method=preprocess_method, debug_folder=debug_folder
+    )
+    ocr_input_path = preprocessed_path if preprocessed_path else image_path
+
     raw_text_blocks: List[str] = []
     source_engine = ""
 
     if engine == OCREngine.EASYOCR:
         source_engine = "EasyOCR"
-        blocks = _extract_text_with_easyocr(image_path)
+        blocks = _extract_text_with_easyocr(ocr_input_path)
         if blocks:
             raw_text_blocks = blocks
     elif engine == OCREngine.GOOGLE:
         source_engine = "Google Vision"
-        full_text = _extract_text_with_google_vision(image_path, gcv_key_path)
+        full_text = _extract_text_with_google_vision(ocr_input_path, gcv_key_path)
         if full_text:
             raw_text_blocks = [full_text]
 
     if not raw_text_blocks:
-        logger.warning(f"{source_engine} could not find any text in {image_path}")
+        logger.warning(f"{source_engine} could not find any text in {ocr_input_path}")
         return None
 
+    # Log the OCR output for debugging and traceability
+    logger.info(f"{source_engine} OCR output for {ocr_input_path}: {raw_text_blocks}")
     logger.debug(f"{source_engine} found text blocks: {raw_text_blocks}")
 
     for text_block in raw_text_blocks:
@@ -179,6 +246,6 @@ def extract_gps_with_ocr(
             return coords[0], coords[1], text_block
 
     logger.warning(
-        f"Could not find a valid GPS coordinate in any text from {source_engine} for {image_path}"
+        f"Could not find a valid GPS coordinate in any text from {source_engine} for {ocr_input_path}"
     )
     return None

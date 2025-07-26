@@ -89,6 +89,22 @@ def gps_extract_command(
     config_path: Annotated[
         Optional[str], typer.Option(help="Path to a custom config.toml file.")
     ] = None,
+    preprocess_method: Annotated[
+        str,
+        typer.Option(
+            "--preprocess-method",
+            help="Preprocessing method to use before OCR (auto, brighten, denoise, deskew, threshold, none).",
+            case_sensitive=False,
+        ),
+    ] = "auto",
+    save_preprocessed: Annotated[
+        bool,
+        typer.Option(
+            "--save-preprocessed",
+            help="Save preprocessed images for debugging.",
+            is_flag=True,
+        ),
+    ] = False,
 ):
     """
     Extracts EXIF metadata from images, with powerful, configurable OCR fallback.
@@ -105,6 +121,8 @@ def gps_extract_command(
         gcv_fallback=gcv_fallback,
         gcv_limit=gcv_limit,
         no_ocr_on_invalid_gps=no_ocr_on_invalid_gps,
+        preprocess_method=preprocess_method,
+        save_preprocessed=save_preprocessed,
     )
 
 
